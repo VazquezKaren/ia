@@ -5,7 +5,6 @@ import httpx
 import re
 from models.schemas import AnalisisIARequest, AnalisisIAResponse
 
-
 router = APIRouter()
 
 # Variables de entorno
@@ -60,9 +59,7 @@ Formato exacto del JSON:
 }}
 """
 
-    headers = {
-        "Content-Type":  "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
     url = f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}"
 
     try:
@@ -71,8 +68,8 @@ Formato exacto del JSON:
                 url,
                 headers=headers,
                 json={
-                    "prompt": prompt,
                     "model": "text-bison-001",
+                    "prompt": { "text": prompt },
                     "temperature": 0.2,
                     "max_output_tokens": 512
                 }
@@ -85,7 +82,6 @@ Formato exacto del JSON:
             )
 
         data_model = response.json()
-        # Suponiendo que `data_model['candidates'][0]['output']` contiene el texto JSON
         raw = data_model.get("candidates", [{}])[0].get("output", "")
         match = re.search(r"\{(?:.|\n)*\}", raw)
         if not match:
