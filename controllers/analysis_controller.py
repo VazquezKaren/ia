@@ -63,13 +63,13 @@ Formato exacto del JSON:
     # Headers para Gemini
     headers = {
         "Content-Type":  "application/json",
-        "Authorization": f"Bearer {GEMINI_API_KEY}"
     }
+    url = f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}"
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
-                GEMINI_ENDPOINT,
+                url,
                 headers=headers,
                 json={
                     "prompt": prompt,
