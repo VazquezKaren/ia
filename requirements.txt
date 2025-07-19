@@ -1,6 +1,11 @@
 fastapi
-uvicorn[standard]
+uvicorn
 httpx
 pydantic
 google-generativeai      # o lo que uses para tu IA
 json5                     # <- esto es lo que falta
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+requests
