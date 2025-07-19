@@ -2,4 +2,5 @@ fastapi
 uvicorn[standard]
 httpx
 pydantic
-google-generativeai   
+google-generativeai      # o lo que uses para tu IA
+json5                     # <- esto es lo que falta
