@@ -60,7 +60,6 @@ Formato exacto del JSON:
 }}
 """
 
-    # Headers para Gemini
     headers = {
         "Content-Type":  "application/json",
     }
