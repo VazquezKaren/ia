@@ -61,6 +61,9 @@ Formato exacto del JSON:
 
     headers = {"Content-Type": "application/json"}
     url = f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}"
+    print("🔗 Llamando a Gemini en:", url)
+    print("🗝️ Con API key:", GEMINI_API_KEY[:8], "...")  # sólo muestro prefix de la key
+
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
