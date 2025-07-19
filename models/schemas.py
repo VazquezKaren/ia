@@ -8,5 +8,11 @@ class AnalisisIARequest(BaseModel):
     descripcion: str
     temperatura: float
     humedad: float
-    luz: float
     humedad_suelo: float
+    luz: float
+
+class AnalisisIAResponse(BaseModel):
+    diagnostico: str
+    evaluacion: dict
+    causas: list[str]
+    recomendaciones: list[str]
