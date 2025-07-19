@@ -1,18 +1,26 @@
 from fastapi import APIRouter, HTTPException
 from models.schemas import AnalisisIARequest, AnalisisIAResponse
-import os, httpx, re
+import os, httpx, re, json, tempfile
 
 router = APIRouter()
 
-# Debes llevar en tu .env:
-# GEMINI_ENDPOINT=https://us-central1-generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText
-# GEMINI_API_KEY=tu_api_key_de_Google
+# ---------- CREDENCIALES DE SERVICIO (VERTEX AI) ----------
+# Espera que subas el JSON de tu service account a la variable de entorno GOOGLE_APPLICATION_CREDENTIALS_JSON
+creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if creds_json:
+    # Crea un archivo temporal para Google SDK
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
+        f.write(creds_json)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
+
+# ---------- ENDPOINT VERTEX AI ----------
+# Debes usar el endpoint VERTEX AI moderno (NO el de v1beta2, ni API KEY)
+# Ejemplo: "https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/text-bison:predict"
 GEMINI_ENDPOINT = os.getenv("GEMINI_ENDPOINT")
-GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY")
 
 @router.post("/analizar", response_model=AnalisisIAResponse)
 async def analizar_datos(data: AnalisisIARequest):
-    # Aquí defines el prompt completo que enviarás a Gemini
+    # ------------- Prompt -------------
     prompt = f"""
 Eres un ingeniero agrónomo experto en germinación de cultivos y evaluación ambiental. Tu tarea es analizar las condiciones de un cultivo en función de sus parámetros al término de germinación.
 
@@ -58,21 +66,27 @@ Formato exacto del JSON:
 }}
 """
 
-    # Construye la URL con tu key
-    url = f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
+    # ------------- Construcción del request a Vertex AI -------------
+    # Documentación: https://cloud.google.com/vertex-ai/docs/generative-ai/start/quickstarts/quickstart-multimodal
+    url = GEMINI_ENDPOINT
+    headers = {"Authorization": f"Bearer {get_google_access_token()}", "Content-Type": "application/json"}
+
+    payload = {
+        "instances": [
+            {"prompt": prompt}
+        ],
+        "parameters": {
+            "temperature": 0.2,
+            "maxOutputTokens": 512
+        }
+    }
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
                 url,
                 headers=headers,
-                json={
-                  "model": "text-bison-001",
-                  "prompt": { "text": prompt },
-                  "temperature": 0.2,
-                  "max_output_tokens": 512
-                }
+                json=payload
             )
 
         if response.status_code != 200:
@@ -81,16 +95,29 @@ Formato exacto del JSON:
                 detail=f"Error de Gemini (status {response.status_code}): {response.text}"
             )
 
-        # La respuesta de Gemini viene en data["candidates"][0]["output"]
-        data_model = response.json()
-        raw = data_model["candidates"][0]["output"]
+        # Respuesta Vertex AI (puede variar por modelo, ajusta si la key cambia)
+        result = response.json()
+        raw = result["predictions"][0]["content"] if "predictions" in result else ""
         match = re.search(r"\{(?:.|\n)*\}", raw)
         if not match:
-            raise HTTPException(502, "No se encontró JSON en la respuesta de Gemini")
+            raise HTTPException(502, "No se encontró JSON en la respuesta de Gemini/Vertex")
 
-        return httpx._models.json.loads(match.group())
+        return json.loads(match.group())
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(500, f"No se pudo procesar el análisis: {e}")
+
+# --------- FUNCION AUXILIAR: Obtener el token OAuth2 ---------
+def get_google_access_token():
+    """Obtiene el access_token del service account cargado por GOOGLE_APPLICATION_CREDENTIALS."""
+    from google.auth.transport.requests import Request
+    from google.oauth2 import service_account
+
+    creds = service_account.Credentials.from_service_account_file(
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"],
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    creds.refresh(Request())
+    return creds.token
