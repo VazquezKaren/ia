@@ -1,19 +1,18 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-import os
-import httpx
-import re
 from models.schemas import AnalisisIARequest, AnalisisIAResponse
+import os, httpx, re
 
 router = APIRouter()
 
-# Variables de entorno
+# Debes llevar en tu .env:
+# GEMINI_ENDPOINT=https://us-central1-generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText
+# GEMINI_API_KEY=tu_api_key_de_Google
 GEMINI_ENDPOINT = os.getenv("GEMINI_ENDPOINT")
 GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY")
 
 @router.post("/analizar", response_model=AnalisisIAResponse)
 async def analizar_datos(data: AnalisisIARequest):
-    # Construcción del prompt completo
+    # Aquí defines el prompt completo que enviarás a Gemini
     prompt = f"""
 Eres un ingeniero agrónomo experto en germinación de cultivos y evaluación ambiental. Tu tarea es analizar las condiciones de un cultivo en función de sus parámetros al término de germinación.
 
@@ -59,11 +58,9 @@ Formato exacto del JSON:
 }}
 """
 
-    headers = {"Content-Type": "application/json"}
+    # Construye la URL con tu key
     url = f"{GEMINI_ENDPOINT}?key={GEMINI_API_KEY}"
-    print("🔗 Llamando a Gemini en:", url)
-    print("🗝️ Con API key:", GEMINI_API_KEY[:8], "...")  # sólo muestro prefix de la key
-
+    headers = {"Content-Type": "application/json"}
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
@@ -71,8 +68,8 @@ Formato exacto del JSON:
                 url,
                 headers=headers,
                 json={
-                  "model":     "text-bison-001",
-                  "prompt":    { "text": prompt },
+                  "model": "text-bison-001",
+                  "prompt": { "text": prompt },
                   "temperature": 0.2,
                   "max_output_tokens": 512
                 }
@@ -84,15 +81,14 @@ Formato exacto del JSON:
                 detail=f"Error de Gemini (status {response.status_code}): {response.text}"
             )
 
+        # La respuesta de Gemini viene en data["candidates"][0]["output"]
         data_model = response.json()
-        raw = data_model.get("candidates", [{}])[0].get("output", "")
+        raw = data_model["candidates"][0]["output"]
         match = re.search(r"\{(?:.|\n)*\}", raw)
         if not match:
-            raise HTTPException(502, "No se encontró JSON en la respuesta del modelo")
+            raise HTTPException(502, "No se encontró JSON en la respuesta de Gemini")
 
-        parsed = match.group()
-        result = httpx._models.json.loads(parsed)
-        return result
+        return httpx._models.json.loads(match.group())
 
     except HTTPException:
         raise
