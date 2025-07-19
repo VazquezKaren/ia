@@ -71,10 +71,10 @@ Formato exacto del JSON:
                 url,
                 headers=headers,
                 json={
-                    "model": "text-bison-001",
-                    "prompt": { "text": prompt },
-                    "temperature": 0.2,
-                    "max_output_tokens": 512
+                  "model":     "text-bison-001",
+                  "prompt":    { "text": prompt },
+                  "temperature": 0.2,
+                  "max_output_tokens": 512
                 }
             )
 
