@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import os
 import httpx
 import re
-from controllers.schemas import AnalisisIARequest, AnalisisIAResponse
+from models.schemas import AnalisisIARequest, AnalisisIAResponse
 
 
 router = APIRouter()
